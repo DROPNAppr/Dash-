@@ -1,65 +1,132 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+
+import { useEffect, useRef, useState } from "react";
+import mapboxgl from "mapbox-gl";
+//import MapboxGeocoder from "@mapbox/mapbox-gl-geocoder";
+
+import "@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css";
+import "mapbox-gl/dist/mapbox-gl.css";
+
+import LeftNavbar from "@/components/dashboard/LeftNavbar";
+import HomePanel from "@/components/dashboard/HomePanel";
+import SearchOverlay from "@/components/dashboard/SearchOverlay";
+
+mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
+
+export default function MapPage() {
+  const mapContainer = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<mapboxgl.Map | null>(null);
+
+  const [homeOpen, setHomeOpen] = useState(true);
+
+  useEffect(() => {
+    if (!mapContainer.current || mapRef.current) return;
+
+    const map = new mapboxgl.Map({
+      container: mapContainer.current,
+      style: "mapbox://styles/mapbox/dark-v11",
+      center: [-73.5673, 45.5017],
+      zoom: 14,
+      pitch: 60,
+      bearing: -17.6,
+      antialias: true,
+    });
+
+    mapRef.current = map;
+
+    map.addControl(new mapboxgl.NavigationControl(), "bottom-right");
+    map.addControl(
+      new mapboxgl.GeolocateControl({
+        positionOptions: { enableHighAccuracy: true },
+        trackUserLocation: true,
+      }),
+      "bottom-right"
+    );
+
+    map.on("load", () => {
+      const layers = map.getStyle().layers;
+
+      const labelLayerId = layers?.find(
+        (layer) => layer.type === "symbol" && layer.layout?.["text-field"]
+      )?.id;
+
+      map.addLayer(
+        {
+          id: "3d-buildings",
+          source: "composite",
+          "source-layer": "building",
+          filter: ["==", "extrude", "true"],
+          type: "fill-extrusion",
+          minzoom: 15,
+          paint: {
+            "fill-extrusion-color": "#aaa",
+            "fill-extrusion-height": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              15,
+              0,
+              15.05,
+              ["get", "height"],
+            ],
+            "fill-extrusion-base": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              15,
+              0,
+              15.05,
+              ["get", "min_height"],
+            ],
+            "fill-extrusion-opacity": 0.6,
+          },
+        },
+        labelLayerId
+      );
+    });
+
+    //const geocoder = new MapboxGeocoder({
+    //  accessToken: mapboxgl.accessToken || "",
+    //  mapboxgl: mapboxgl as any,
+    //});
+
+    //geocoder.on("result", (e) => {
+    //  const coordinates = e.result.geometry.coordinates as [number, number];
+
+    //  map.flyTo({
+    //    center: coordinates,
+    //    zoom: 17,
+    //    pitch: 70,
+    //    bearing: 45,
+    //    duration: 3000,
+    //  });
+    //});
+
+    //map.addControl(geocoder);
+
+    return () => {
+      map.remove();
+      mapRef.current = null;
+    };
+  }, []);
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+    <>
+      <div
+        ref={mapContainer}
+        style={{ width: "100vw", height: "100vh" }}
+      />
+
+      <LeftNavbar onHomeClick={() => setHomeOpen(!homeOpen)} />
+      <HomePanel open={homeOpen} />
+      <div className="fixed top-6 right-6 flex items-center gap-3 z-50">
+      <SearchOverlay map={mapRef.current} />
+      <AccountMenu />
+      </div>
+      <MapThemeSwitcher map={mapRef.current} />
+    </>
   );
 }
+import MapThemeSwitcher from "@/components/dashboard/MapThemeSwitcher";
+import AccountMenu from "@/components/dashboard/AccountMenu";
