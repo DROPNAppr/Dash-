@@ -12,7 +12,7 @@ import LeftNavbar from "@/components/dashboard/LeftNavbar";
 import HomePanel from "@/components/dashboard/HomePanel";
 import SearchOverlay from "@/components/dashboard/SearchOverlay";
 
-mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
+mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!;
 
 export default function MapPage() {
   const mapContainer = useRef<HTMLDivElement | null>(null);
@@ -22,6 +22,11 @@ export default function MapPage() {
 
   useEffect(() => {
     if (!mapContainer.current || mapRef.current) return;
+
+    if (!mapboxgl.supported()) {
+      console.error("WebGL non supporté par ce navigateur/environnement.");
+      return;
+    }
 
     const map = new mapboxgl.Map({
       container: mapContainer.current,
